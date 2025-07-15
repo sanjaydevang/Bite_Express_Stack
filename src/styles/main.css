@@ -1,0 +1,151 @@
+:root {
+  --primary-color: #0d6efd;
+  --secondary-color: #6c757d;
+}
+
+body {
+  padding-top: 70px;
+  background-color: #f8f9fa;
+}
+
+.restaurant-card {
+  transition: transform 0.2s;
+}
+
+.restaurant-card:hover {
+  transform: translateY(-5px);
+}
+
+.restaurant-image {
+  height: 200px;
+  object-fit: cover;
+}
+
+.menu-item-image {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+}
+.menu-item-image {
+  width: 100%; /* Make the image take the full width of its container */
+  height: auto; /* Maintain the aspect ratio */
+  border-radius: 0.25rem; /* Keep the rounded corners */
+  object-fit: cover; /* Ensures the image covers the area proportionally */
+}
+
+
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quantity-value {
+  min-width: 30px;
+  text-align: center;
+}
+
+
+/* Jumbotron */
+.jumbotron {
+  position: relative;
+  height: 450px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80');
+  background-size: cover;
+  background-position: center;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.content {
+  position: relative;
+  z-index: 10;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 20px;
+  text-align: center;
+  color: white;
+}
+
+h1 {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+  font-weight: bold;
+}
+
+p {
+  font-size: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+/* Search Form */
+.search-form {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.search-container {
+  position: relative;
+}
+
+.search-container input {
+  width: 100%;
+  padding: 1rem 3rem 1rem 1.5rem;
+  font-size: 1.125rem;
+  border: none;
+  border-radius: 9999px;
+  outline: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+input:focus {
+  box-shadow: 0 0 0 2px #fbbf24;
+}
+
+.search-button {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #4b5563;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.2s;
+}
+
+.search-button:hover {
+  color: #1f2937;
+}
+
+/* Popular Tags */
+.popular-tags {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.tag {
+  padding: 0.5rem 1rem;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.tag:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
