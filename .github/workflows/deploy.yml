@@ -31,12 +31,12 @@ jobs:
     steps:
       # Step 1: Check out the code from your repository.
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Step 2: Configure AWS credentials.
       # This action securely logs into AWS using secrets stored in GitHub.
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4 # UPDATED to v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -45,27 +45,29 @@ jobs:
       # Step 3: Log in to Amazon ECR.
       - name: Log in to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2 # UPDATED to v2
 
       # Step 4: Build, tag, and push the frontend image to ECR.
       - name: Build and push frontend image
+        id: build-image-frontend
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG ./frontend
           docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG
-          echo "frontend_image=$ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG" >> $GITHUB_ENV
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG"
 
       # Step 5: Build, tag, and push the backend image to ECR.
       - name: Build and push backend image
+        id: build-image-backend
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG ./backend
           docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG
-          echo "backend_image=$ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG" >> $GITHUB_ENV
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG"
 
   # This job deploys the new images to ECS.
   deploy:
@@ -75,10 +77,10 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4 # UPDATED to v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -96,7 +98,7 @@ jobs:
         with:
           task-definition: task-definition-frontend.json
           container-name: frontend
-          image: ${{ env.frontend_image }}
+          image: ${{ needs.build-and-push.outputs.build-image-frontend.outputs.image }}
 
       # Step 5: Deploy the new frontend task definition.
       - name: Deploy frontend to ECS
@@ -119,7 +121,7 @@ jobs:
         with:
           task-definition: task-definition-backend.json
           container-name: backend
-          image: ${{ env.backend_image }}
+          image: ${{ needs.build-and-push.outputs.build-image-backend.outputs.image }}
 
       # Step 8: Deploy the new backend task definition.
       - name: Deploy backend to ECS
