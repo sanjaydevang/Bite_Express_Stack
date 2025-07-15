@@ -30,3 +30,6 @@ dist-ssr
 *.tfstate
 *.tfstate.backup
 *.tfvars
+*.tfstate.backup
+.terraform.lock.hcl
+.terraform/
