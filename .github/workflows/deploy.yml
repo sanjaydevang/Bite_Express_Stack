@@ -1,0 +1,131 @@
+# This is the name of the GitHub Actions workflow.
+name: Deploy Bite Express to AWS ECS
+
+# This section defines when the workflow will run.
+# It triggers on every push to the 'main' branch.
+on:
+  push:
+    branches:
+      - main
+
+# This section defines the environment variables that will be available
+# to all jobs in the workflow. You will need to replace these values
+# with the outputs from your terraform apply command.
+env:
+  AWS_REGION: us-east-1 # The AWS region you deployed your infrastructure to.
+  ECR_REPOSITORY_FRONTEND: bite-express-frontend # The name of your frontend ECR repository.
+  ECR_REPOSITORY_BACKEND: bite-express-backend   # The name of your backend ECR repository.
+  ECS_CLUSTER_NAME: bite-express-cluster         # The name of your ECS cluster.
+  ECS_SERVICE_FRONTEND: frontend-service         # The name of your frontend ECS service.
+  ECS_SERVICE_BACKEND: backend-service           # The name of your backend ECS service.
+  ECS_TASK_DEFINITION_FRONTEND: frontend         # The family name of your frontend task definition.
+  ECS_TASK_DEFINITION_BACKEND: backend           # The family name of your backend task definition.
+
+# This defines the jobs that will run as part of the workflow.
+jobs:
+  # This job builds the Docker images and pushes them to ECR.
+  build-and-push:
+    name: Build and Push to ECR
+    runs-on: ubuntu-latest # The type of virtual machine to run the job on.
+
+    steps:
+      # Step 1: Check out the code from your repository.
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      # Step 2: Configure AWS credentials.
+      # This action securely logs into AWS using secrets stored in GitHub.
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Step 3: Log in to Amazon ECR.
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      # Step 4: Build, tag, and push the frontend image to ECR.
+      - name: Build and push frontend image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG ./frontend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG
+          echo "frontend_image=$ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG" >> $GITHUB_ENV
+
+      # Step 5: Build, tag, and push the backend image to ECR.
+      - name: Build and push backend image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG ./backend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG
+          echo "backend_image=$ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG" >> $GITHUB_ENV
+
+  # This job deploys the new images to ECS.
+  deploy:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    needs: build-and-push # This job will only run if the 'build-and-push' job succeeds.
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Step 3: Download the existing frontend task definition.
+      - name: Download frontend task definition
+        run: |
+          aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION_FRONTEND }} --query taskDefinition > task-definition-frontend.json
+
+      # Step 4: Fill in the new frontend image ID in the task definition.
+      - name: Fill in new frontend image ID
+        id: task-def-frontend
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition-frontend.json
+          container-name: frontend
+          image: ${{ env.frontend_image }}
+
+      # Step 5: Deploy the new frontend task definition.
+      - name: Deploy frontend to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def-frontend.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE_FRONTEND }}
+          cluster: ${{ env.ECS_CLUSTER_NAME }}
+          wait-for-service-stability: true
+
+      # Step 6: Download the existing backend task definition.
+      - name: Download backend task definition
+        run: |
+          aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION_BACKEND }} --query taskDefinition > task-definition-backend.json
+
+      # Step 7: Fill in the new backend image ID in the task definition.
+      - name: Fill in new backend image ID
+        id: task-def-backend
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition-backend.json
+          container-name: backend
+          image: ${{ env.backend_image }}
+
+      # Step 8: Deploy the new backend task definition.
+      - name: Deploy backend to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def-backend.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE_BACKEND }}
+          cluster: ${{ env.ECS_CLUSTER_NAME }}
+          wait-for-service-stability: true
