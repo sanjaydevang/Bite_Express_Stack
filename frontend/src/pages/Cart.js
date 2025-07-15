@@ -4,6 +4,9 @@ import { formatCurrency } from '../utils/currency.js';
 export function renderCart(container) {
   const cart = StorageService.getCart();
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
+  // A backup image for any item that doesn't have one
+  const placeholderImage = 'https://placehold.co/80x80/eee/ccc?text=No+Image';
 
   container.innerHTML = `
     <div class="container py-4">
@@ -27,8 +30,11 @@ export function renderCart(container) {
                     <div class="list-group-item">
                       <div class="row align-items-center">
                         <div class="col-auto">
-                          <img src="${item.image}" alt="${item.name}" 
+                          
+                          <!-- THIS IS THE ONLY LINE THAT WAS CHANGED -->
+                          <img src="${item.image || placeholderImage}" alt="${item.name}" 
                                class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
+
                         </div>
                         <div class="col">
                           <h5 class="mb-1">${item.name}</h5>

@@ -1,13 +1,27 @@
-import { menuItems } from '../data/menuItems.js';
 import { StorageService } from '../services/StorageService.js';
 import { QuantityControl } from '../components/QuantityControl.js';
 import { formatCurrency } from '../utils/currency.js';
 
-export function renderMenu(container) {
+// The function is now async
+export async function renderMenu(container) {
   const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
   const restaurantId = parseInt(urlParams.get('id'));
-  const items = menuItems[restaurantId];
 
+  // --- NEW: Fetch menu items from the API ---
+  let items = []; // Start with an empty array
+  try {
+    const response = await fetch(`http://localhost:3001/api/restaurants/${restaurantId}/menu`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    items = await response.json(); // Assign the fetched data
+  } catch (error) {
+    console.error('Failed to fetch menu:', error);
+    container.innerHTML = '<p class="text-center text-danger p-5">Could not load menu. Is the backend server running or is the menu data missing?</p>';
+    return; // Stop execution if fetch fails
+  }
+
+  // The rest of your rendering code stays exactly the same
   container.innerHTML = `
     <div class="container py-4">
       <div class="row g-4">
@@ -16,7 +30,8 @@ export function renderMenu(container) {
             <div class="card h-100">
               <div class="row g-0">
                 <div class="col-4">
-                  <img src="${item.image}" alt="${item.name}" class="object-fit-cover rounded-start menu-item-image h-100">
+                  <!-- CORRECTED: Image source now points to the local /images folder -->
+                  <img src="./images/${item.image}" alt="${item.name}" class="object-fit-cover rounded-start menu-item-image h-100">
                 </div>
                 <div class="col-8">
                   <div class="card-body">
@@ -39,6 +54,7 @@ export function renderMenu(container) {
     </div>
   `;
 
+  // The rest of your interactivity code also stays the same
   const quantityControls = {};
   items.forEach(item => {
     quantityControls[item.id] = new QuantityControl(`quantity-control-${item.id}`);

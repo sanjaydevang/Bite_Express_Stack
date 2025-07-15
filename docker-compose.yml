@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # The Backend Service
+  backend:
+    build: ./backend
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=bite_express_user
+      - DB_PASSWORD=your_secure_password
+      - DB_DATABASE=bite_express_dev
+    depends_on:
+      # UPDATED: Now waits for the db to be healthy
+      db:
+        condition: service_healthy
+
+  # The Frontend Service
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+
+  # The Database Service
+  db:
+    image: postgres:14-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=bite_express_user
+      - POSTGRES_PASSWORD=your_secure_password
+      - POSTGRES_DB=bite_express_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database-init:/docker-entrypoint-initdb.d 
+
+    # NEW: Healthcheck to ensure the database is ready before other services connect
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bite_express_user -d bite_express_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+

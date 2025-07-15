@@ -31,31 +31,52 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
-// Routes
-app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to the Bite Express Backend!' });
-});
-
 // --- API Routes ---
+
+// Basic root route
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to the Bite Express Backend!' });
 });
 
+// An endpoint to get all restaurants with data formatted for the frontend
 app.get('/api/restaurants', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM restaurants ORDER BY id');
+    const query = `
+      SELECT 
+        id, 
+        name, 
+        cuisine, 
+        image_url AS image, 
+        rating, 
+        delivery_time AS "deliveryTime"
+      FROM restaurants 
+      ORDER BY id
+    `;
+    const { rows } = await pool.query(query);
     res.json(rows);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    // UPDATED: More detailed error logging
+    console.error('Error executing query for /api/restaurants:', err.stack);
+    res.status(500).json({ error: 'Internal Server Error', details: err.message });
   }
 });
 
-// NEW: An endpoint to get the menu for a specific restaurant
+// An endpoint to get the menu for a specific restaurant
 app.get('/api/restaurants/:id/menu', async (req, res) => {
   try {
-    const { id } = req.params; // Get the restaurant ID from the URL
-    const { rows } = await pool.query('SELECT * FROM menu_items WHERE restaurant_id = $1', [id]);
+    const { id } = req.params;
+    const query = `
+      SELECT 
+        id, 
+        restaurant_id, 
+        name, 
+        description, 
+        price, 
+        image_url AS image 
+      FROM menu_items 
+      WHERE restaurant_id = $1
+    `;
+    const { rows } = await pool.query(query, [id]);
     
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Menu not found for this restaurant.' });
@@ -63,8 +84,9 @@ app.get('/api/restaurants/:id/menu', async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    // UPDATED: More detailed error logging
+    console.error(`Error executing query for /api/restaurants/${req.params.id}/menu:`, err.stack);
+    res.status(500).json({ error: 'Internal Server Error', details: err.message });
   }
 });
 
